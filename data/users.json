@@ -1,0 +1,11 @@
+{
+  "password": "secret_sauce",
+  "users": {
+    "standard_user": {"kind": "normal"},
+    "locked_out_user": {"kind": "locked_out"},
+    "problem_user": {"kind": "known_bug"},
+    "performance_glitch_user": {"kind": "known_bug"},
+    "error_user": {"kind": "known_bug"},
+    "visual_user": {"kind": "known_bug"}
+  }
+}

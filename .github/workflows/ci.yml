@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Suite to run (smoke|regression)"
+        required: true
+        default: "smoke"
+      browser:
+        description: "Browser (chromium|firefox)"
+        required: true
+        default: "chromium"
+  schedule:
+    - cron: "30 2 * * *"  # nightly at 02:30 UTC
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [ "chromium" ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: |
+          python -m playwright install --with-deps
+
+      - name: Run tests (smoke on PR/push, regression nightly)
+        env:
+          HEADLESS: "true"
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            MARKER="regression and not known_bug"
+            BROWSER="${{ matrix.browser }}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${{ inputs.suite }}" = "regression" ]; then
+              MARKER="regression and not known_bug"
+            else
+              MARKER="smoke and not known_bug"
+            fi
+            BROWSER="${{ inputs.browser }}"
+          else
+            MARKER="smoke and not known_bug"
+            BROWSER="${{ matrix.browser }}"
+          fi
+
+          pytest -q -m "${MARKER}" --browser "${BROWSER}"
+
+      - name: Upload pytest/playwright artifacts (if present)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-test-artifacts
+          path: |
+            playwright-report/**
+            test-results/**
+            traces/**
+          if-no-files-found: ignore
