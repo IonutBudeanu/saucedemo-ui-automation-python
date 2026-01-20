@@ -4,16 +4,20 @@ from pages import InventoryPage, CartPage
 from pages import CheckoutStepOnePage, CheckoutOverviewPage, CheckoutCompletePage
 
 
+@pytest.mark.smoke
 @pytest.mark.regression
 def test_add_all_and_remove_all_from_cart(standard_inventory: InventoryPage):
+    inv_count = standard_inventory.inventory_count()
     standard_inventory.add_all_items()
-    assert standard_inventory.cart_count() == 6
+    assert standard_inventory.cart_count() == inv_count
+
     standard_inventory.open_cart()
     cart = CartPage(standard_inventory.page)
-    cart.is_at()
-    assert cart.item_count() == 6
-    cart.remove_all()
-    assert cart.item_count() == 0
+    cart.wait_for_ready()
+    cart.assert_item_count(inv_count)
+
+    cart.remove_all_items()
+    cart.assert_item_count(0)
 
 
 @pytest.mark.smoke
@@ -48,7 +52,8 @@ def test_place_order_happy_path_all_products(standard_inventory: InventoryPage):
         ("John", "Doe", "", "Postal Code"),
     ],
 )
-def test_checkout_required_field_validation(standard_inventory: InventoryPage, first, last, zip_code, expected_fragment):
+def test_checkout_required_field_validation(standard_inventory: InventoryPage, first, last, zip_code,
+                                            expected_fragment):
     standard_inventory.add_all_items()
     standard_inventory.open_cart()
     cart = CartPage(standard_inventory.page)
